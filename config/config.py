@@ -14,8 +14,8 @@ class Config:
     # Project root
     PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    # Data paths
-    DATA_ROOT = "/mnt/c/Users/camil/OneDrive - Institut Catholique de Lille/Cours/S3/Intro to AI & ML/AI_project/MURA-v1.1"
+    # Data paths (relative to project root)
+    DATA_ROOT = os.path.join(PROJECT_ROOT, "MURA-v1.1")
     TRAIN_CSV = os.path.join(DATA_ROOT, "train_labeled_studies.csv")
     VALID_CSV = os.path.join(DATA_ROOT, "valid_labeled_studies.csv")
 
