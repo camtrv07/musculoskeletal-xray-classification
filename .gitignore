@@ -33,13 +33,13 @@ env/
 *~
 
 # Jupyter Notebook
-.ipynb_checkpoints
-*.ipynb
+#.ipynb_checkpoints
+#*.ipynb
 
 # Model Checkpoints and Logs
 checkpoints/
 logs/
-results/
+#results/
 *.pth
 *.pt
 *.ckpt
