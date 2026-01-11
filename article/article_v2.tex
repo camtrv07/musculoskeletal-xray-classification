@@ -1,0 +1,145 @@
+\documentclass[12pt,a4paper]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage[margin=1in]{geometry}
+\usepackage[backend=biber,style=numeric,sorting=none]{biblatex}
+\addbibresource{biblio.bib}
+
+
+% Title and authors
+\title{Multi-View Neural Network for Musculoskeletal Disorder Detection in Radiographic Imaging}
+\author{
+    Camille Trouvé\textsuperscript{1},
+    Ceren Dinc\textsuperscript{1},
+    Esteban Boulanger\textsuperscript{1}
+    Roger El Achkar \textsuperscript{1} \\
+    \textsuperscript{1}\textit{Faculté de Gestion Economie et Sciences - Ecole du Numérique} \\
+}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+% Abstract
+\begin{abstract}
+Musculoskeletal disorders are among the main causes of disability, according to the World Health Organization. This study aims to develop a tool capable of determining abnormalities in musculoskeletal radiographs. The proposed model is a transformer-based deep neural network with a multiple-view fusion module to integrate multiple radiographic projections, mimicking how radiologists interpret radiographic views. The model was trained and tested on the MURA dataset (Stanford), a large open-access dataset combining 40,561 radiographic images of the upper extremity from multiple studies. The model achieved an accuracy of XX (to be determined). The results are expected to demonstrate the benefit of multi-view integration for improving diagnostic performance and robustness in musculoskeletal abnormality detection. 
+\end{abstract}
+
+% Introduction
+\section{Introduction}
+\label{sec:introduction}
+
+Musculoskeletal conditions represent a profound global health challenge, affecting approximately 1.7 billion people and serving as the primary driver of disability worldwide\cite{rajpurkar_mura_2018}. These disorders, which include fractures, osteoarthritis, and various degenerative joint diseases, significantly impair mobility and dexterity, often leading to premature exit from the workforce and a diminished quality of life. The increasing prevalence of these conditions, exacerbated by a growing and aging population, has placed an unprecedented strain on healthcare systems\cite{chada_machine_2019}. Radiologists  workloads rise because of a higher volume of complex images, which contributes to fatigue and a statistically significant risk of diagnostic error\cite{rajpurkar_mura_2018,chea_current_2020,singh_hybrid_2022}.
+
+In this context, artificial intelligence (AI), specifically deep learning (DL) utilizing convolutional neural networks (CNNs), has emerged as a tool for diagnostic assistance\cite{chada_machine_2019,chea_current_2020,dangelo_artificial_2022}. CNN architectures are uniquely suited for image-based problems because they can autonomously learn discriminative features from large datasets, matching or even exceeding human performance in narrow tasks\cite{chea_current_2020,singh_hybrid_2022}. Within musculoskeletal radiology, DL applications have expanded across four primary categories: lesion detection, classification, segmentation, and non-interpretive tasks such as protocol optimization. While expert-level performance has been achieved in specific domains like bone age assessment and certain fracture detections, comprehensive interpretation of complex imaging examinations remains an ongoing challenge\cite{chea_current_2020,dangelo_artificial_2022}.
+
+A pivotal milestone in this field was the release of the MURA (Musculoskeletal Radiographs) dataset, a large-scale collection of 40,561 upper extremity images manually labeled by board-certified radiologists\cite{rajpurkar_mura_2018}. Initial benchmark studies using a 169-layer DenseNet achieved high overall AUROC scores but revealed a significant performance gap in specific anatomical regions, particularly the finger and humerus radiographs, where the model struggled to match the agreement levels of practicing radiologists. Furthermore, many existing models operate on single radiographic projections, whereas clinical diagnosis typically necessitates the integration of multiple views to resolve spatial ambiguities\cite{rajpurkar_mura_2018,dangelo_artificial_2022}.
+
+This study proposes a multi-view neural network architecture designed to bridge this gap by mimicking the diagnostic process of human experts. By employing a ResNet18 backbone pretrained on ImageNet\cite{he_deep_2016} and a specialized masked average pooling module, the model integrates features from multiple radiographic views into a singular study-level prediction.
+
+% Material and Method
+\section{Material and Method}
+\label{sec:material-method}
+
+\subsection{Dataset}
+
+In this project, we used the MURA dataset (Musculoskeletal Radiographs), which contains X-ray images of upper limbs labeled as either normal or abnormal\cite{rajpurkar_mura_2018}. Labels are provided at the study level, meaning that all images belonging to the same patient examination share the same label.
+
+Each study $S_i$ contains between one and four radiographic views:
+\begin{equation}
+S_i = \{ x_i^{(v)} \}_{v=1}^{n_i}, \quad n_i \in \{1,2,3,4\},
+\end{equation}
+where $x_i^{(v)}$ denotes the $v$-th image of study $i$. Each study is associated with a binary label $y_i \in \{0,1\}$ indicating whether it is abnormal.
+
+Although the full dataset contains more than 40,000 images, we restricted training to a subset of 1,000 studies to reduce computational cost. The official validation split was used for evaluation.
+
+\subsection{Preprocessing and Data Augmentation}
+
+All images were originally stored as grayscale images and were converted to three channels to match the input format of pretrained convolutional neural networks. Images were resized to $224 \times 224$ pixels.
+
+Pixel intensities were normalized using a fixed mean and standard deviation of $(0.5, 0.5, 0.5)$. During training, simple data augmentation techniques such as random horizontal flips were applied.
+
+Since the number of views per study varies, we padded each study to a maximum of four images and used a binary mask:
+\begin{equation}
+m_i^{(v)} =
+\begin{cases}
+1 & \text{if view } v \text{ exists} \\
+0 & \text{otherwise}
+\end{cases}
+\end{equation}
+to indicate valid views.
+
+\subsection{Model Architecture}
+
+We implemented a multi-view classification model in which each image is processed independently and then aggregated at the study level.
+
+\subsubsection{Feature Extraction}
+
+Each image is passed through a shared ResNet18 network pretrained on ImageNet\cite{he_deep_2016}. The final classification layer is removed, and the output of the network is a feature vector of dimension 512:
+\begin{equation}
+h_i^{(v)} = f_{\theta}(x_i^{(v)}) \in \mathbb{R}^{512}.
+\end{equation}
+
+\subsubsection{Multi-View Aggregation}
+
+The features of all views belonging to the same study are combined using a masked average pooling operation:
+\begin{equation}
+z_i = \frac{1}{\sum_{v} m_i^{(v)}} \sum_{v=1}^{4} m_i^{(v)} \, h_i^{(v)}.
+\end{equation}
+
+This produces a single feature vector $z_i$ representing the entire study.
+
+\subsubsection{Classification}
+
+The aggregated feature vector is then passed through a linear layer followed by a sigmoid activation to obtain the predicted probability of abnormality:
+\begin{equation}
+\hat{y}_i = \sigma(w^\top z_i + b),
+\end{equation}
+where $\hat{y}_i \in (0,1)$.
+
+\subsection{Training Procedure}
+
+To handle class imbalance, we used a weighted binary cross-entropy loss:
+\begin{equation}
+\mathcal{L} =
+- \frac{1}{B} \sum_{i=1}^{B}
+\left[
+w_{+} y_i \log(\hat{y}_i)
++
+w_{-} (1 - y_i) \log(1 - \hat{y}_i)
+\right].
+\end{equation}
+
+The model was trained using the Adam optimizer with default parameters or stochastic gradient descent, depending on the experiment\cite{kingma_adam_2017}.
+
+\subsection{Evaluation Metrics}
+
+Model performance was mainly evaluated using the Area Under the Receiver Operating Characteristic Curve (AUC-ROC). In addition, accuracy, sensitivity, and specificity were computed. For a given decision threshold $\tau$, these metrics are defined as:
+\begin{align}
+\text{Accuracy} &= \frac{\mathrm{TP} + \mathrm{TN}}{\mathrm{TP} + \mathrm{TN} + \mathrm{FP} + \mathrm{FN}}, \\
+\text{Sensitivity} &= \frac{\mathrm{TP}}{\mathrm{TP} + \mathrm{FN}}, \\
+\text{Specificity} &= \frac{\mathrm{TN}}{\mathrm{TN} + \mathrm{FP}}.
+\end{align}
+
+% Results
+\section{Results}
+\label{sec:results}
+
+Write your results here.
+
+% Discussion
+\section{Discussion}
+\label{sec:discussion}
+
+Write your discussion here.
+
+\printbibliography
+
+\end{document}

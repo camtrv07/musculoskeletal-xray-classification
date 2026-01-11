@@ -1,21 +1,17 @@
 # MURA Musculoskeletal Abnormality Detection
 
-A deep learning system for detecting abnormalities in musculoskeletal radiographs using Vision Transformers and multi-view fusion.
+A deep learning system for detecting abnormalities in musculoskeletal radiographs using multi-view fusion.
 
-## Project Overview
+## Overview
 
-This project implements a state-of-the-art transformer-based model for musculoskeletal abnormality detection on the MURA (Musculoskeletal Radiographs) dataset. The model integrates multiple radiographic views using a novel cross-attention fusion mechanism, mimicking how radiologists interpret X-rays.
+This project implements a multi-view classification model for musculoskeletal abnormality detection on the MURA (Musculoskeletal Radiographs) dataset. The model processes multiple X-ray images per study and fuses them to make a final diagnosis prediction.
 
 **Key Features:**
-- Vision Transformer (ViT) backbone for feature extraction
-- Multi-view fusion with cross-attention mechanism
-- Handles variable-length studies (1-4 images per study)
-- Grad-CAM visualization for interpretability
-- Class imbalance handling with weighted loss
+- Multi-view fusion for handling multiple X-ray images per study
+- Supports both simple CNN (ResNet18) and transformer-based (ViT) architectures
+- Experiment tracking and comparison system
 - Comprehensive evaluation metrics (AUC-ROC, sensitivity, specificity)
-- Checkpointing and training resumption
-
-**Expected Performance:** AUC ≥ 0.93-0.95 (exceeding baseline DenseNet's 0.929)
+- Visualization tools for comparing different training runs
 
 ## Dataset
 
@@ -26,56 +22,56 @@ This project implements a state-of-the-art transformer-based model for musculosk
 - **Task:** Binary classification (normal vs abnormal)
 - **Class Distribution:** 38.5% abnormal, 61.5% normal
 
-## Architecture
+Download from: https://stanfordmlgroup.github.io/competitions/mura/
 
-```
-Input: Multi-view X-rays [batch, 4, 3, 224, 224]
-    ↓
-Shared ViT Backbone (google/vit-base-patch16-224)
-    ↓
-View Features [batch, 4, 768]
-    ↓
-Cross-Attention Fusion Module
-    - Learnable query tokens
-    - Masked attention for variable-length inputs
-    ↓
-Fused Features [batch, 768]
-    ↓
-Classification Head
-    ↓
-Output: Abnormality Probability [batch, 1]
-```
-
-## Installation
+## Quick Setup
 
 ### Prerequisites
-- Python 3.8+
-- CUDA-capable GPU (recommended)
-- 16+ GB RAM
+- Python 3.8+ (Python 3.13 recommended)
+- pip or conda
+- Git
 
-### Setup
+### Installation Steps
 
-1. Clone the repository:
+1. **Clone the repository:**
 ```bash
+git clone <your-repository-url>
 cd AI_project
 ```
 
-2. Create a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+2. **Download MURA dataset:**
 
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+   Place the MURA dataset in the project root:
+   ```
+   AI_project/
+   ├── MURA-v1.1/
+   │   ├── train/
+   │   ├── valid/
+   │   ├── train_labeled_studies.csv
+   │   └── valid_labeled_studies.csv
+   ├── config/
+   ├── data/
+   └── ...
+   ```
 
-4. Verify the MURA dataset is in place:
-```bash
-ls MURA-v1.1/
-# Should show: train/, valid/, train_labeled_studies.csv, valid_labeled_studies.csv, etc.
-```
+3. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+   Or using conda:
+   ```bash
+   conda create -n mura python=3.13
+   conda activate mura
+   pip install -r requirements.txt
+   ```
+
+4. **Verify setup:**
+   ```bash
+   python experiments/train.py --name "test" --epochs 1 --train_samples 100
+   ```
+
+   This should complete in ~2-3 minutes on CPU.
 
 ## Project Structure
 
@@ -84,178 +80,234 @@ AI_project/
 ├── config/
 │   └── config.py              # Central configuration
 ├── data/
-│   ├── dataset.py             # MURA dataset loader
+│   ├── dataset.py             # Full MURA dataset loader
+│   ├── simple_dataset.py      # Simplified dataset for quick training
 │   ├── transforms.py          # Image augmentations
 │   └── utils.py               # Data utilities
 ├── models/
-│   ├── vit_backbone.py        # ViT feature extractor
-│   ├── multiview_fusion.py    # Cross-attention fusion
-│   └── mura_classifier.py     # Complete model
+│   ├── simple_classifier.py   # ResNet18-based model (fast, CPU-friendly)
+│   ├── vit_backbone.py        # Vision Transformer backbone
+│   ├── multiview_fusion.py    # Cross-attention fusion modules
+│   └── mura_classifier.py     # Complete transformer-based model
 ├── training/
-│   ├── trainer.py             # Training orchestration
 │   ├── losses.py              # Weighted BCE loss
 │   ├── metrics.py             # Evaluation metrics
 │   └── checkpoint_manager.py  # Model checkpointing
-├── evaluation/
-│   ├── evaluator.py           # Model evaluation
-│   └── visualization.py       # Grad-CAM visualization
 ├── experiments/
-│   ├── train.py               # Training script
-│   ├── evaluate.py            # Evaluation script
-│   └── visualize.py           # Visualization script
-├── utils/
-│   ├── seed.py                # Reproducibility
-│   └── logging_utils.py       # TensorBoard logging
-└── requirements.txt
+│   └── train.py               # Main training script with experiment tracking
+├── experiments_log/           # Saved experiment results
+├── checkpoints/               # Saved model checkpoints
+├── notebooks/
+│   └── Compare_Experiments.ipynb  # Experiment comparison notebook
+└── utils/
+    └── seed.py                # Reproducibility utilities
 ```
+
+## Model Architectures
+
+### Simple Classifier (Current - CPU Friendly)
+- **Backbone:** ResNet18 CNN (11M parameters)
+- **Fusion:** Average pooling across views
+- **Multi-view:** Yes (processes multiple X-rays per study)
+- **Transformer-based:** No
+- **Speed:** Fast on CPU
+- **Use case:** Quick experiments and baseline
+
+### Full Classifier (Advanced - GPU Recommended)
+- **Backbone:** Vision Transformer (ViT, 86M parameters)
+- **Fusion:** Cross-attention between views
+- **Multi-view:** Yes (processes multiple X-rays per study)
+- **Transformer-based:** Yes
+- **Speed:** Slow on CPU, requires GPU
+- **Use case:** Best performance, research-grade
 
 ## Usage
 
-### Training
+### Training with Experiment Tracking
 
-**Basic Training:**
+The main training script automatically logs all experiments for easy comparison:
+
+**Basic training:**
 ```bash
-python experiments/train.py
+python experiments/train.py --name "baseline"
 ```
 
-**Custom Parameters:**
+**Custom parameters:**
 ```bash
 python experiments/train.py \
-    --batch_size 8 \
-    --lr 1e-4 \
-    --epochs 50 \
-    --fusion_type cross_attention
+  --name "my_experiment" \
+  --epochs 20 \
+  --batch_size 8 \
+  --lr 1e-3 \
+  --train_samples 2000 \
+  --val_samples 400
 ```
 
-**Resume Training:**
+**Available options:**
+- `--name`: Experiment name (required)
+- `--epochs`: Number of epochs (default: 10)
+- `--batch_size`: Batch size (default: 4)
+- `--lr`: Learning rate (default: 1e-3)
+- `--train_samples`: Training samples (default: 1000)
+- `--val_samples`: Validation samples (default: 200)
+- `--optimizer`: Optimizer choice (default: adam, options: adam, sgd)
+
+### Experiment Comparison
+
+Run multiple experiments with different settings:
+
 ```bash
-python experiments/train.py --resume checkpoints/latest.pth
+# Experiment 1: Baseline
+python experiments/train.py --name "baseline" --epochs 10 --lr 1e-3
+
+# Experiment 2: More epochs
+python experiments/train.py --name "more_epochs" --epochs 20 --lr 1e-3
+
+# Experiment 3: Higher learning rate
+python experiments/train.py --name "higher_lr" --epochs 10 --lr 5e-3
+
+# Experiment 4: More training data
+python experiments/train.py --name "more_data" --epochs 10 --train_samples 3000
 ```
 
-**Options:**
-- `--batch_size`: Batch size (default: 8)
-- `--lr`: Learning rate (default: 1e-4)
-- `--epochs`: Number of epochs (default: 50)
-- `--fusion_type`: Fusion module type (`cross_attention`, `concatenation`, `pooling`)
-- `--resume`: Checkpoint path to resume from
-- `--device`: Device to use (`cuda` or `cpu`)
+Each experiment is automatically saved to `experiments_log/` with:
+- Unique ID and timestamp
+- All hyperparameters
+- Complete training history
+- Best validation metrics
 
-### Evaluation
+### Comparing Results
 
-**Evaluate Best Model:**
+Open the comparison notebook:
 ```bash
-python experiments/evaluate.py --checkpoint checkpoints/best.pth
+jupyter notebook notebooks/Compare_Experiments.ipynb
 ```
 
-**Options:**
-- `--checkpoint`: Path to checkpoint (required)
-- `--fusion_type`: Fusion type used in model (default: cross_attention)
-- `--save_predictions`: Path to save predictions CSV (default: results/predictions.csv)
-- `--device`: Device to use
+The notebook will show:
+- Side-by-side training curves
+- Final metrics comparison
+- Hyperparameter effect analysis
+- Best experiment recommendation
 
-### Visualization
+## What Gets Logged
 
-**Generate Grad-CAM Visualizations:**
+Every training run automatically saves:
+
+1. **Master log:** `experiments_log/experiments.json` - All experiments in one file
+2. **Individual logs:** `experiments_log/[name]_[timestamp].json` - Detailed results per experiment
+3. **Checkpoints:** `checkpoints/[name]_best.pth` - Best model for each experiment
+
+Example experiment log:
+```json
+{
+  "id": "baseline_20260105_143022",
+  "name": "baseline",
+  "timestamp": "2026-01-05T14:30:22",
+  "config": {
+    "epochs": 10,
+    "batch_size": 4,
+    "lr": 0.001,
+    "train_samples": 1000
+  },
+  "best_metrics": {
+    "auc": 0.7823,
+    "accuracy": 0.7456
+  }
+}
+```
+
+## Example Workflows
+
+### Find Best Learning Rate
 ```bash
-python experiments/visualize.py \
-    --checkpoint checkpoints/best.pth \
-    --num_samples 20
+python experiments/train.py --name "lr_1e-2" --lr 1e-2
+python experiments/train.py --name "lr_1e-3" --lr 1e-3
+python experiments/train.py --name "lr_1e-4" --lr 1e-4
+python experiments/train.py --name "lr_5e-4" --lr 5e-4
 ```
 
-**Options:**
-- `--checkpoint`: Path to checkpoint (required)
-- `--num_samples`: Number of samples to visualize (default: 20)
-- `--output_dir`: Directory to save visualizations (default: results/gradcam)
-
-### Monitoring Training
-
-**TensorBoard:**
+### Test Effect of More Data
 ```bash
-tensorboard --logdir logs/
+python experiments/train.py --name "data_500" --train_samples 500
+python experiments/train.py --name "data_1000" --train_samples 1000
+python experiments/train.py --name "data_2000" --train_samples 2000
+python experiments/train.py --name "data_3000" --train_samples 3000
 ```
 
-Then open http://localhost:6006 in your browser.
+### Determine Optimal Epochs
+```bash
+python experiments/train.py --name "epochs_5" --epochs 5
+python experiments/train.py --name "epochs_10" --epochs 10
+python experiments/train.py --name "epochs_20" --epochs 20
+python experiments/train.py --name "epochs_30" --epochs 30
+```
 
-## Configuration
+Then compare all results in the Jupyter notebook.
 
-Edit [config/config.py](config/config.py) to customize:
+## Common Issues & Solutions
 
-**Model Parameters:**
-- `VIT_MODEL`: Pre-trained ViT model name
-- `NUM_QUERY_TOKENS`: Number of attention queries
-- `MAX_VIEWS`: Maximum views per study
-- `DROPOUT_RATE`: Dropout rate
+### Issue: "FileNotFoundError: train_labeled_studies.csv"
+**Solution:** Ensure MURA dataset is in the correct location:
+```
+AI_project/MURA-v1.1/train_labeled_studies.csv
+```
 
-**Training Parameters:**
-- `BATCH_SIZE`: Training batch size
-- `NUM_EPOCHS`: Total training epochs
-- `LEARNING_RATE`: AdamW learning rate
-- `WEIGHT_DECAY`: L2 regularization
-- `POS_WEIGHT`: Weight for positive class (handles imbalance)
+### Issue: Out of Memory
+**Solution:** Reduce batch size and training samples:
+```bash
+python experiments/train.py --name "test" --batch_size 2 --train_samples 500
+```
 
-**Data Parameters:**
-- `IMAGE_SIZE`: Input image size (224 for ViT)
-- `NUM_WORKERS`: Data loading workers
+### Issue: Module Import Errors
+**Solution:** Run commands from project root:
+```bash
+cd /path/to/AI_project
+python experiments/train.py --name "test"
+```
 
-## Model Performance
+## System Requirements
 
-**Target Metrics:**
-- **AUC-ROC:** ≥ 0.93-0.95
-- **Accuracy:** ≥ 0.88-0.90
-- **Sensitivity:** ≥ 0.85 (critical for medical screening)
-- **Specificity:** ≥ 0.90
+### Minimum (CPU only)
+- 4 GB RAM
+- 2 GB free disk space
+- Python 3.8+
 
-**Training Progress:**
-- Epoch 1: AUC ~0.75-0.80
-- Epoch 10: AUC ~0.88-0.90
-- Epoch 50: AUC ~0.92-0.94
+### Recommended (CPU)
+- 8 GB RAM
+- 5 GB free disk space
+- Python 3.10+
 
-## Troubleshooting
+### Optimal (GPU)
+- 16 GB RAM
+- GPU with 8+ GB VRAM
+- 10 GB free disk space
+- CUDA-compatible GPU
 
-**GPU Out of Memory:**
-- Reduce batch size: `--batch_size 4`
-- Use gradient accumulation
-- Enable mixed precision training (set `USE_AMP=True` in config)
+## Performance Expectations
 
-**Slow Training:**
-- Increase num_workers: Set `NUM_WORKERS=8` in config
-- Use smaller ViT variant
-- Cache extracted features
+**Simple Classifier (ResNet18):**
+- Training speed: ~3-5 min/epoch on CPU (1000 samples)
+- Expected AUC: 0.75-0.85
+- Use case: Quick experiments, baseline comparisons
 
-**Poor Performance:**
-- Train longer (50+ epochs)
-- Try different fusion types
-- Adjust learning rate
-- Check data augmentation
+**Full Classifier (ViT):**
+- Training speed: Requires GPU
+- Expected AUC: 0.93-0.95
+- Use case: Final model, publication-ready results
 
-## File Descriptions
+## Interpreting Results
 
-### Core Modules
+### Good Signs
+- Increasing validation AUC - Model is learning
+- Small train/val gap - Not overfitting
+- Stable curves - Reliable training
+- Balanced sensitivity/specificity - No bias
 
-**[config/config.py](config/config.py)**
-- Central configuration with all hyperparameters
-- Paths to dataset and outputs
-- Model architecture settings
-
-**[data/dataset.py](data/dataset.py)**
-- `MURADataset`: Loads studies with variable-length images
-- Handles padding and masking
-- Returns: images, mask, label, study_path
-
-**[models/mura_classifier.py](models/mura_classifier.py)**
-- `MURAClassifier`: Complete end-to-end model
-- Combines ViT backbone + fusion module + classifier
-- Supports multiple fusion types
-
-**[training/trainer.py](training/trainer.py)**
-- Main training loop
-- Handles optimization, validation, logging
-- Automatic checkpointing
-
-**[evaluation/visualization.py](evaluation/visualization.py)**
-- Grad-CAM visualization for ViT
-- Generates saliency maps
-- Multi-view visualization support
+### Warning Signs
+- Decreasing validation AUC - Overfitting or bad hyperparameters
+- Large train/val gap - Model memorizing training data
+- Oscillating curves - Learning rate too high
+- Very low sensitivity OR specificity - Imbalanced predictions
 
 ## Citation
 
@@ -290,10 +342,6 @@ This project is for educational and research purposes.
 - Stanford ML Group for the MURA dataset
 - Google Research for the Vision Transformer
 - HuggingFace for the Transformers library
-
-## Contact
-
-For questions or issues, please open an issue in the repository.
 
 ---
 
